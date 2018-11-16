@@ -80,6 +80,7 @@ app.get(`/iclock/cdata`, async (request, response) => {
     //response.send(`GET OPTION FROM:${device_SN}\nStamp=82983982\nOpStamp=9238883\nErrorDelay=60\nDelay=10\nTransTimes=00:00;14:05\nTransInterval=1\nTransFlag=1111000000\nRealtime=1\nEncrypt=0`);
     //return response.send(`OK\n`);
 })
+
 function replaceAll(str, find, replace) {
     return str.replace(new RegExp(find, 'g'), replace);
 }
@@ -195,6 +196,7 @@ app.post(`/iclock/devicecmd`, (request, response) => {
 app.post(`/iclock/cdata`, (request, response) => {
     console.log(" ");
     console.log("cdata Trigered ");
+    const device_SN = request.query.SN;
 
     //response.header["content-type"] = "text/plain";
     //console.log(request.query);
@@ -223,6 +225,7 @@ app.post(`/iclock/cdata`, (request, response) => {
             //body.split(/\s+/);
             console.log(body);
 
+            dataControll("ATTLOG", dat, device_SN);
             response.send("OK\n");
         });
 
@@ -235,6 +238,7 @@ app.post(`/iclock/cdata`, (request, response) => {
 
             //console.log(dat);
             //console.log(dat);
+
         })
         request.on('end', () => {
             //body.split(/\s+/);
@@ -265,16 +269,16 @@ app.post(`/iclock/cdata`, (request, response) => {
                 response.header['Pragma'] = 'no-cache';
                 response.header['Cache-Control'] = 'no-store';
 
-                dataControll(dat);
+                dataControll("FP", dat, device_SN);
 
             } else if (moop[0] === "USER") {
                 console.log("USER DATA!!");
                 data = body.split("USER");
                 //data = data.split(/\s+/);
                 for (let i = 1; i < data.length; i++) {
-                    dat.push({
-                        USER: data[i]
-                    });
+                    dat.push(
+                        data[i]
+                    );
                 }
 
                 let d = new Date();
@@ -290,7 +294,7 @@ app.post(`/iclock/cdata`, (request, response) => {
                 response.header['Pragma'] = 'no-cache';
                 response.header['Cache-Control'] = 'no-store';
 
-                dataControll(dat);
+                dataControll("USER", dat, device_SN);
 
             } else {
                 console.log("YOU ARE HERE: " + moop);
@@ -305,10 +309,185 @@ app.post(`/iclock/cdata`, (request, response) => {
 
 })
 
-async function dataControll(dat) {
-    console.log(dat);
+async function dataControll(type, dat, sn) {
+
+    let pool = new Pool(conf);
+
+    let a = [];
+    let b = [];
+
+    let c = [];
+    let d = [];
+    let e = [];
+    let f = [];
+    let g = [];
+    let h = [];
+    let i = [];
+    let j = [];
+
+    if (type === "FP") {
+        //console.log(dat);
+    } else if (type === "USER") {
+        console.log(dat);
+
+        dat.forEach(element => {
+            let first = element.toString();
+            a = first.split("\t");
+        });
+        console.log(a);
+
+        b.push({
+            pin: a[0],
+            name: a[1],
+            pri: a[2],
+            passwd: a[3],
+            card: a[4],
+            grp: a[5],
+            tz: a[6],
+            verify: a[7]
+        })
+
+        b.forEach(element => {
+            c = element.pin.split("=");
+            d = element.name.split("=");
+            e = element.pri.split("=");
+            f = element.passwd.split("=");
+            g = element.card.split("=");
+            h = element.grp.split("=");
+            i = element.tz.split("=");
+            j = element.verify.split("=");
+        });
+
+        let user_id = c[1].toString();
+        let user_name = d[1].toString();
+        let user_pri = e[1].toString();
+        let user_password = f[1].toString();
+        let user_card = g[1].toString();
+        let user_group = h[1].toString();
+        let user_time_zone = i[1].toString();
+        let user_verify = j[1].toString();
+        user_verify = user_verify.replace("\n", "")
+        let query = "update employees set";
+
+        // `update employees set name='${user_name}',
+        //  pri='${user_pri}', password='${user_password}',
+        //   card='${user_card}', group='${user_group}', 
+        //   time_zone='${user_time_zone}', 
+        //   verify='${user_verify}' where company_id='${comp_id}'
+        //    and device_id='${user_id}' and site_id='${si_id}'`
+
+        if(user_name.length >= 1){
+            query += ` name='${user_name}'`;
+        }
+        if(user_pri.length >= 1){
+            query += `, pri='${user_pri}'`;
+        }
+        if(user_password.length >= 1){
+            query += `, password='${user_password}'`;
+        }
+        if(user_card.length >= 1){
+            query += `, card='${user_card}'`;
+        }
+        if(user_group.length >= 1){
+            query += `, groupp='${user_group}'`;
+        }
+        if(user_time_zone.length >= 1){
+            query += `, time_zone='${user_time_zone}'`;
+        }
+        if(user_verify.length >= 1){
+            query += `, verify='${user_verify}'`;
+        }
+
+        console.log(user_id);
+        console.log(user_name);
+        console.log(user_pri);
+        console.log(user_password);
+        console.log(user_card);
+        console.log(user_group);
+        console.log(user_time_zone);
+        console.log(user_verify);
+
+        let client = await pool.connect();
+
+        try {
+            try {
+                res = await client.query(`select company_id, site_id from device where serial='${sn}' and active=true`);
+            } catch (err) {
+                console.log(err);
+                throw err;
+            }
+        } finally {
+            client.release();
+        }
+
+        if (res.rows.length === 0){
+            // client = await pool.connect();
+
+            // try {
+            //     try {
+            //         res = await client.query(`insert into employees values('5', )`);
+            //     } catch (err) {
+            //         console.log(err);
+            //         throw err;
+            //     }
+            // } finally {
+            //     client.release();
+            // }
+        }else{
+
+let comp_id;
+let si_id;
+
+
+            res.rows.forEach(element => {
+                comp_id = element.company_id;
+                si_id = element.site_id;
+            });
+
+            query += ` where company_id='${comp_id}' and device_id='${user_id}' and site_id='${si_id}'`
+
+            console.log(query);
+       client = await pool.connect();
+
+            try {
+                try {
+
+
+                    // let user_id = c[1];
+                    // let user_name = d[1];
+                    // let user_pri = e[1];
+                    // let user_password = f[1];
+                    // let user_card = g[1];
+                    // let user_group = h[1];
+                    // let user_time_zone = i[1];
+                    // let user_verify = j[1];
+
+                    await client.query(query);
+                } catch (err) {
+                    console.log(err);
+                    throw err;
+                }
+            } finally {
+                client.release();
+            }
+        }
+
+  
+
+
+        // a.forEach(element => {
+        //     let second = element.toString();
+        //     b.push(second.split("="));
+        // });
+        //console.log(b);
+
+    } else if (type === "ATTLOG") {
+        //console.log(dat);
+    }
+
+    //console.log(dat);
 
 }
 
 //app.request("");
-app.listen(port, () => console.log(`MB20 API listening on port ${port}!`))
+app.listen(port, () => console.log(`VisioTime API listening on port ${port}!`))
