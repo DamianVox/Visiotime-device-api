@@ -1,0 +1,3 @@
+C:\Users\Christo\Desktop\MB20 API\obj\Debug\Visio_Time_Push_API.njsprojAssemblyReference.cache
+C:\Users\Christo\Desktop\MB20 API\obj\Debug\Visio_Time_Push_API.njsproj.CoreCompileInputs.cache
+C:\Users\Christo\Desktop\MB20 API\bin\Microsoft.NodejsTools.WebRole.dll
