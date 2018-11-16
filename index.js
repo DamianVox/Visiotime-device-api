@@ -33,10 +33,56 @@ app.get(`/iclock/cdata`, async (request, response) => {
     const device_LN = request.query.language;
     console.log(`Device Language: ${device_LN}`);
 
-    response.send(`GET OPTION FROM:${device_SN}\nStamp=82983982\nOpStamp=9238883\nErrorDelay=60\nDelay=10\nTransTimes=00:00;14:05\nTransInterval=1\nTransFlag=1111000000\nEncrypt=0`);
+    let cmd = "";
+
+    let pool = new Pool(conf);
+    pool.query(`select * from device_setup where device_serial='${device_SN}'`, (err, res) => {
+        if (res) {
+            if (res.rows.length === 0) {
+                let d = new Date();
+
+                response.header['Server'] = 'visiotime';
+                response.header['Date'] = `${d}`;
+                response.header['Content-Type'] = 'text/plain';
+                response.header['Content-Length'] = `1`;
+                response.header['Connection'] = 'close';
+                response.header['Pragma'] = 'no-cache';
+                response.header['Cache-Control'] = 'no-store';
+                response.send("OK\n");
+            } else {
+
+                res.rows.forEach(element => {
+                    cmd = `${element.cmd}\n`;
+                });
+                let d = new Date();
+
+                response.header['Server'] = 'visiotime';
+                response.header['Date'] = `${d}`;
+                response.header['Content-Type'] = 'text/plain';
+                response.header['Connection'] = 'close';
+                response.header['Pragma'] = 'no-cache';
+                response.header['Cache-Control'] = 'no-store';
+                console.log(cmd)
+                let SNreplace = "SN#SN"
+                let NLreplace = "$%#$#";
+
+                cmd = cmd.replace(SNreplace, `${device_SN}`);
+                cmd = cmd.split(NLreplace).join("\n");
+
+
+                console.log(cmd);
+                response.send(cmd);
+            }
+        }
+    })
+
+    //response.send(`GET OPTION FROM:${device_SN}\nStamp=82983982\nOpStamp=9238883\nErrorDelay=60\nDelay=10\nTransTimes=00:00;14:05\nTransInterval=1\nTransFlag=1111000000\nEncrypt=0`);
     //response.send(`GET OPTION FROM:${device_SN}\nStamp=82983982\nOpStamp=9238883\nErrorDelay=60\nDelay=10\nTransTimes=00:00;14:05\nTransInterval=1\nTransFlag=1111000000\nRealtime=1\nEncrypt=0`);
     //return response.send(`OK\n`);
 })
+function replaceAll(str, find, replace) {
+    return str.replace(new RegExp(find, 'g'), replace);
+}
 
 app.get(`/iclock/getrequest`, (request, response) => {
     let pool = new Pool(conf);
@@ -76,8 +122,9 @@ app.get(`/iclock/getrequest`, (request, response) => {
                 response.header['Pragma'] = 'no-cache';
                 response.header['Cache-Control'] = 'no-store';
                 console.log(cmds)
-                let replacment = "*#*#*"
-                cmds = cmds.replace(replacment, "\t");
+                let tabPlacment = "*#*#*"
+                //cmds = cmds.replace(replacment, "\t");
+                cmds = cmds.split(tabPlacment).join("\t");
                 console.log(cmds);
                 response.send(cmds);
             }
@@ -259,7 +306,7 @@ app.post(`/iclock/cdata`, (request, response) => {
 })
 
 async function dataControll(dat) {
-    //console.log(dat);
+    console.log(dat);
 
 }
 
