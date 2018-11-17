@@ -5,11 +5,12 @@ const {
 } = require('pg');
 
 const conf = {
-    database: `visiopix`,
+    database: `visiotime`,
     host: 'localhost',
     user: 'postgres',
     password: `postgres`,
-    max: 20,
+    port: 5433,
+    max: 100,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
 }
@@ -251,9 +252,9 @@ app.post(`/iclock/cdata`, (request, response) => {
                 //data = data.shift();
 
                 for (let i = 1; i < data.length; i++) {
-                    dat.push({
-                        FP: data[i]
-                    });
+                    dat.push(
+                        data[i]
+                    );
                 }
 
                 let d = new Date();
@@ -312,6 +313,7 @@ app.post(`/iclock/cdata`, (request, response) => {
 async function dataControll(type, dat, sn) {
 
     let pool = new Pool(conf);
+    let client;
 
     let a = [];
     let b = [];
@@ -327,8 +329,130 @@ async function dataControll(type, dat, sn) {
 
     if (type === "FP") {
         //console.log(dat);
+
+        dat.forEach(element => {
+            let first = element.toString();
+            a = first.split("\t");
+            b.push({
+                pin: a[0],
+                fid: a[1],
+                size: a[2],
+                valid: a[3],
+                tmp: a[4]
+            });
+
+            b.forEach(element => {
+                c = element.pin.split("=");
+                d = element.fid.split("=");
+                e = element.size.split("=");
+                f = element.valid.split("=");
+                g = element.tmp.split("=");
+    
+            });
+
+            let user_id = c[1].toString();
+            let user_fID = d[1].toString();
+            let user_size = e[1].toString();
+            let user_valid = f[1].toString();
+            let user_tmp = g[1].toString();
+
+            user_id = user_id.replace("\n", "");
+            user_fID = user_fID.replace("\n", "");
+            user_size = user_size.replace("\n", "");
+            user_valid = user_valid.replace("\n", "");
+            user_tmp = user_tmp.replace("\n", "");
+
+            let query = "update employees set";
+
+            if(user_fID === '0'){
+                query += ` fp_one='${user_tmp}'`;
+            }
+            if(user_fID === '1'){
+                query += ` fp_two='${user_tmp}'`;
+            }
+            if(user_fID === '2'){
+                query += ` fp_three='${user_tmp}'`;
+            }
+            if(user_fID === '3'){
+                query += ` fp_four='${user_tmp}'`;
+            }
+            if(user_fID === '4'){
+                query += ` fp_five='${user_tmp}'`;
+            }
+            if(user_fID === '5'){
+                query += ` fp_six='${user_tmp}'`;
+            }
+            if(user_fID === '6'){
+                query += ` fp_seven='${user_tmp}'`;
+            }
+            if(user_fID === '7'){
+                query += ` fp_aight='${user_tmp}'`;
+            }
+            if(user_fID === '8'){
+                query += ` fp_nine='${user_tmp}'`;
+            }
+            if(user_fID === '9'){
+                query += ` fp_ten='${user_tmp}'`;
+            }
+
+
+            // console.log(user_id);
+            // console.log(user_fID);
+            // console.log(user_size);
+            // console.log(user_valid);
+            // console.log(user_tmp);
+
+             //client =  pool.connect();
+
+        try {
+            try {
+                pool.query(`select company_id, site_id from device where serial='${sn}' and active=true`, (error, result)=>{
+                    if (result.rows.length === 0){
+
+                    }else{
+            
+            let comp_id;
+            let si_id;
+            
+            
+            result.rows.forEach(element => {
+                            comp_id = element.company_id;
+                            si_id = element.site_id;
+                        });
+            
+                        query += ` where company_id='${comp_id}' and device_id='${user_id}' and site_id='${si_id}'`
+            
+                        //console.log(query);
+                   //client =  pool.connect();
+            
+                        try {
+                            try {
+            
+                                pool.query(query);
+                            } catch (err) {
+                                console.log(err);
+                                throw err;
+                            }
+                        } finally {
+                            //pool.release();
+                        }
+                    }
+            
+                });
+            } catch (err) {
+                console.log(err);
+                throw err;
+            }
+        } finally {
+            //pool.release();
+        }
+
+
+        });
+        
+
     } else if (type === "USER") {
-        console.log(dat);
+        //console.log(dat);
 
         dat.forEach(element => {
             let first = element.toString();
@@ -369,13 +493,6 @@ async function dataControll(type, dat, sn) {
         user_verify = user_verify.replace("\n", "")
         let query = "update employees set";
 
-        // `update employees set name='${user_name}',
-        //  pri='${user_pri}', password='${user_password}',
-        //   card='${user_card}', group='${user_group}', 
-        //   time_zone='${user_time_zone}', 
-        //   verify='${user_verify}' where company_id='${comp_id}'
-        //    and device_id='${user_id}' and site_id='${si_id}'`
-
         if(user_name.length >= 1){
             query += ` name='${user_name}'`;
         }
@@ -407,7 +524,7 @@ async function dataControll(type, dat, sn) {
         console.log(user_time_zone);
         console.log(user_verify);
 
-        let client = await pool.connect();
+         client = await pool.connect();
 
         try {
             try {
