@@ -10,14 +10,14 @@ const conf = {
     user: 'postgres',
     password: `postgres`,
     port: 5433,
-    max: 100,
+    max: 1000,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
 }
 
 let port = 3000;
 
-app.get(`/iclock/cdata`, async (request, response) => {
+app.get(`/iclock/cdata`, (request, response) => {
     console.log(" ");
     response.header["content-type"] = "text/plain";
     console.log(request.query);
@@ -39,47 +39,29 @@ app.get(`/iclock/cdata`, async (request, response) => {
     let pool = new Pool(conf);
     pool.query(`select * from device_setup where device_serial='${device_SN}'`, (err, res) => {
         if (res) {
-            if (res.rows.length === 0) {
-                let d = new Date();
+            res.rows.forEach(element => {
+                cmd = `${element.cmd}\n`;
+            });
+            let d = new Date();
 
-                response.header['Server'] = 'visiotime';
-                response.header['Date'] = `${d}`;
-                response.header['Content-Type'] = 'text/plain';
-                response.header['Content-Length'] = `1`;
-                response.header['Connection'] = 'close';
-                response.header['Pragma'] = 'no-cache';
-                response.header['Cache-Control'] = 'no-store';
-                response.send("OK\n");
-            } else {
+            response.header['Server'] = 'visiotime';
+            response.header['Date'] = `${d}`;
+            response.header['Content-Type'] = 'text/plain';
+            response.header['Connection'] = 'close';
+            response.header['Pragma'] = 'no-cache';
+            response.header['Cache-Control'] = 'no-store';
+            console.log(cmd)
+            let SNreplace = "SN#SN"
+            let NLreplace = "$%#$#";
 
-                res.rows.forEach(element => {
-                    cmd = `${element.cmd}\n`;
-                });
-                let d = new Date();
-
-                response.header['Server'] = 'visiotime';
-                response.header['Date'] = `${d}`;
-                response.header['Content-Type'] = 'text/plain';
-                response.header['Connection'] = 'close';
-                response.header['Pragma'] = 'no-cache';
-                response.header['Cache-Control'] = 'no-store';
-                console.log(cmd)
-                let SNreplace = "SN#SN"
-                let NLreplace = "$%#$#";
-
-                cmd = cmd.replace(SNreplace, `${device_SN}`);
-                cmd = cmd.split(NLreplace).join("\n");
+            cmd = cmd.replace(SNreplace, `${device_SN}`);
+            cmd = cmd.split(NLreplace).join("\n");
 
 
-                console.log(cmd);
-                response.send(cmd);
-            }
+            console.log(cmd);
+            response.send(cmd);
         }
     })
-
-    //response.send(`GET OPTION FROM:${device_SN}\nStamp=82983982\nOpStamp=9238883\nErrorDelay=60\nDelay=10\nTransTimes=00:00;14:05\nTransInterval=1\nTransFlag=1111000000\nEncrypt=0`);
-    //response.send(`GET OPTION FROM:${device_SN}\nStamp=82983982\nOpStamp=9238883\nErrorDelay=60\nDelay=10\nTransTimes=00:00;14:05\nTransInterval=1\nTransFlag=1111000000\nRealtime=1\nEncrypt=0`);
-    //return response.send(`OK\n`);
 })
 
 function replaceAll(str, find, replace) {
@@ -94,51 +76,31 @@ app.get(`/iclock/getrequest`, (request, response) => {
 
     console.log(" ");
     console.log("getrequest Trigered ");
-    //response.header["content-type"] = "text/plain";
     console.log(request.query);
 
-    pool.query(`select * from device_cmds where device_serial='${device_SN}' and done=false order by date_initiated asc`, (err, res) => {
+    pool.query(`select * from device_cmds where device_serial='${device_SN}' and done=false order by date_initiated asc fetch first row only`, (err, res) => {
         if (res) {
-            if (res.rows.length === 0) {
-                let d = new Date();
+            res.rows.forEach(element => {
+                cmds += `${element.cmd}\n`;
+            });
+            let d = new Date();
 
-                response.header['Server'] = 'visiotime';
-                response.header['Date'] = `${d}`;
-                response.header['Content-Type'] = 'text/plain';
-                response.header['Content-Length'] = `1`;
-                response.header['Connection'] = 'close';
-                response.header['Pragma'] = 'no-cache';
-                response.header['Cache-Control'] = 'no-store';
-                response.send("OK\n");
-            } else {
-
-                res.rows.forEach(element => {
-                    cmds += `${element.cmd}\n`;
-                });
-                let d = new Date();
-
-                response.header['Server'] = 'visiotime';
-                response.header['Date'] = `${d}`;
-                response.header['Content-Type'] = 'text/plain';
-                response.header['Connection'] = 'close';
-                response.header['Pragma'] = 'no-cache';
-                response.header['Cache-Control'] = 'no-store';
-                console.log(cmds)
-                let tabPlacment = "*#*#*"
-                //cmds = cmds.replace(replacment, "\t");
-                cmds = cmds.split(tabPlacment).join("\t");
-                console.log(cmds);
-                response.send(cmds);
-            }
+            response.header['Server'] = 'visiotime';
+            response.header['Date'] = `${d}`;
+            response.header['Content-Type'] = 'text/plain';
+            response.header['Connection'] = 'close';
+            response.header['Pragma'] = 'no-cache';
+            response.header['Cache-Control'] = 'no-store';
+            console.log(cmds)
+            let tabPlacment = "*#*#*"
+            //cmds = cmds.replace(replacment, "\t");
+            cmds = cmds.split(tabPlacment).join("\t");
+            console.log(cmds);
+            response.send(cmds);
+        }else{
+            response.send("OK\n");
         }
     })
-    //return response.send(`C:ID2:REBOOT`);
-    //return response.send(`C:ID1:DATA UPDATE USERINFO PIN=20\tName=TESTING\tPassword=1234321\tCard=123456789\tGrp=1\tTZ=0000000000000000\tPri=0`);
-    //return response.send(`C:ID1:DATA UPDATE USERINFO PIN=100\tName=Christo\tPasswd=4321\tGrp=1\tPri=0`);
-    //response.send(`C:ID1:DATA QUERY ATTLOG StartTime=2018-11-13 00:00:00\tEndTime=2018-11-16 23:59:59`);
-    //response.send(`C:ID1:DATA QUERY FINGERTMP PIN=1\tFingerID=1`);
-    //response.send("C:ID1:DATA QUERY USERINFO PIN=1");
-    //response.send("OK\n");
 })
 
 
@@ -160,11 +122,10 @@ app.post(`/iclock/devicecmd`, (request, response) => {
     request.on('data', chunk => {
         body += chunk.toString();
 
-        //console.log(dat);
-        //console.log(dat);
     })
     request.on('end', () => {
-        moop = body.split(/\s+/);
+        console.log(body);
+        moop = body.split("\n");
 
         for (let i = 0; i < moop.length - 1; i++) {
             a = moop[i].split("&");
@@ -188,8 +149,6 @@ app.post(`/iclock/devicecmd`, (request, response) => {
         response.header['Cache-Control'] = 'no-store';
         response.send("OK\n");
 
-        console.log(dat);
-        //response.send("OK\n");
     });
 
 })
@@ -199,10 +158,6 @@ app.post(`/iclock/cdata`, (request, response) => {
     console.log("cdata Trigered ");
     const device_SN = request.query.SN;
 
-    //response.header["content-type"] = "text/plain";
-    //console.log(request.query);
-
-    //let bleep = request .data;
     console.log("Table: " + request.query.table);
 
     let data = [];
@@ -218,12 +173,8 @@ app.post(`/iclock/cdata`, (request, response) => {
 
         request.on('data', chunk => {
             body += chunk.toString();
-
-            //console.log(dat);
-            //console.log(dat);
         })
         request.on('end', () => {
-            //body.split(/\s+/);
             console.log(body);
 
             dataControll("ATTLOG", dat, device_SN);
@@ -259,8 +210,6 @@ app.post(`/iclock/cdata`, (request, response) => {
 
                 let d = new Date();
                 l = dat.length;
-
-                console.log(d + " Content Length: " + l);
 
                 response.header['Server'] = 'visiotime';
                 response.header['Date'] = `${d}`;
@@ -301,16 +250,13 @@ app.post(`/iclock/cdata`, (request, response) => {
                 console.log("YOU ARE HERE: " + moop);
             }
 
-
             response.send(`OK:${l}\n`);
         });
     }
 
-    //return response.send("OK\n");
-
 })
 
-async function dataControll(type, dat, sn) {
+function dataControll(type, dat, sn) {
 
     let pool = new Pool(conf);
     let client;
@@ -347,7 +293,7 @@ async function dataControll(type, dat, sn) {
                 e = element.size.split("=");
                 f = element.valid.split("=");
                 g = element.tmp.split("=");
-    
+
             });
 
             let user_id = c[1].toString();
@@ -364,92 +310,59 @@ async function dataControll(type, dat, sn) {
 
             let query = "update employees set";
 
-            if(user_fID === '0'){
+            if (user_fID === '0') {
                 query += ` fp_one='${user_tmp}'`;
             }
-            if(user_fID === '1'){
+            if (user_fID === '1') {
                 query += ` fp_two='${user_tmp}'`;
             }
-            if(user_fID === '2'){
+            if (user_fID === '2') {
                 query += ` fp_three='${user_tmp}'`;
             }
-            if(user_fID === '3'){
+            if (user_fID === '3') {
                 query += ` fp_four='${user_tmp}'`;
             }
-            if(user_fID === '4'){
+            if (user_fID === '4') {
                 query += ` fp_five='${user_tmp}'`;
             }
-            if(user_fID === '5'){
+            if (user_fID === '5') {
                 query += ` fp_six='${user_tmp}'`;
             }
-            if(user_fID === '6'){
+            if (user_fID === '6') {
                 query += ` fp_seven='${user_tmp}'`;
             }
-            if(user_fID === '7'){
+            if (user_fID === '7') {
                 query += ` fp_aight='${user_tmp}'`;
             }
-            if(user_fID === '8'){
+            if (user_fID === '8') {
                 query += ` fp_nine='${user_tmp}'`;
             }
-            if(user_fID === '9'){
+            if (user_fID === '9') {
                 query += ` fp_ten='${user_tmp}'`;
             }
 
+            pool.query(`select company_id, site_id from device where serial='${sn}' and active=true`, (error, result) => {
+                if (result) {
+                    let comp_id;
+                        let si_id;
 
-            // console.log(user_id);
-            // console.log(user_fID);
-            // console.log(user_size);
-            // console.log(user_valid);
-            // console.log(user_tmp);
 
-             //client =  pool.connect();
-
-        try {
-            try {
-                pool.query(`select company_id, site_id from device where serial='${sn}' and active=true`, (error, result)=>{
-                    if (result.rows.length === 0){
-
-                    }else{
-            
-            let comp_id;
-            let si_id;
-            
-            
-            result.rows.forEach(element => {
+                        result.rows.forEach(element => {
                             comp_id = element.company_id;
                             si_id = element.site_id;
                         });
-            
+
                         query += ` where company_id='${comp_id}' and device_id='${user_id}' and site_id='${si_id}'`
-            
-                        //console.log(query);
-                   //client =  pool.connect();
-            
-                        try {
-                            try {
-            
-                                pool.query(query);
-                            } catch (err) {
-                                console.log(err);
-                                throw err;
+
+                        pool.query(query, (error, result) => {
+                            if (result) {
+
                             }
-                        } finally {
-                            //pool.release();
-                        }
+                        })
                     }
-            
-                });
-            } catch (err) {
-                console.log(err);
-                throw err;
-            }
-        } finally {
-            //pool.release();
-        }
+                })
+        })
 
-
-        });
-        
 
     } else if (type === "USER") {
         //console.log(dat);
@@ -493,111 +406,50 @@ async function dataControll(type, dat, sn) {
         user_verify = user_verify.replace("\n", "")
         let query = "update employees set";
 
-        if(user_name.length >= 1){
+        if (user_name.length >= 1) {
             query += ` name='${user_name}'`;
         }
-        if(user_pri.length >= 1){
+        if (user_pri.length >= 1) {
             query += `, pri='${user_pri}'`;
         }
-        if(user_password.length >= 1){
+        if (user_password.length >= 1) {
             query += `, password='${user_password}'`;
         }
-        if(user_card.length >= 1){
+        if (user_card.length >= 1) {
             query += `, card='${user_card}'`;
         }
-        if(user_group.length >= 1){
+        if (user_group.length >= 1) {
             query += `, groupp='${user_group}'`;
         }
-        if(user_time_zone.length >= 1){
+        if (user_time_zone.length >= 1) {
             query += `, time_zone='${user_time_zone}'`;
         }
-        if(user_verify.length >= 1){
+        if (user_verify.length >= 1) {
             query += `, verify='${user_verify}'`;
         }
 
-        console.log(user_id);
-        console.log(user_name);
-        console.log(user_pri);
-        console.log(user_password);
-        console.log(user_card);
-        console.log(user_group);
-        console.log(user_time_zone);
-        console.log(user_verify);
+        pool.query(`select company_id, site_id from device where serial='${sn}' and active=true`, (err, res)=>{
+            if(res){
 
-         client = await pool.connect();
+                let comp_id;
+                let si_id;
+    
+    
+                res.rows.forEach(element => {
+                    comp_id = element.company_id;
+                    si_id = element.site_id;
+                });
+    
+                query += ` where company_id='${comp_id}' and device_id='${user_id}' and site_id='${si_id}'`
+    
+                console.log(query);
 
-        try {
-            try {
-                res = await client.query(`select company_id, site_id from device where serial='${sn}' and active=true`);
-            } catch (err) {
-                console.log(err);
-                throw err;
+                        pool.query(query, (err, res)=>{
+                            
+                        });
             }
-        } finally {
-            client.release();
-        }
-
-        if (res.rows.length === 0){
-            // client = await pool.connect();
-
-            // try {
-            //     try {
-            //         res = await client.query(`insert into employees values('5', )`);
-            //     } catch (err) {
-            //         console.log(err);
-            //         throw err;
-            //     }
-            // } finally {
-            //     client.release();
-            // }
-        }else{
-
-let comp_id;
-let si_id;
-
-
-            res.rows.forEach(element => {
-                comp_id = element.company_id;
-                si_id = element.site_id;
-            });
-
-            query += ` where company_id='${comp_id}' and device_id='${user_id}' and site_id='${si_id}'`
-
-            console.log(query);
-       client = await pool.connect();
-
-            try {
-                try {
-
-
-                    // let user_id = c[1];
-                    // let user_name = d[1];
-                    // let user_pri = e[1];
-                    // let user_password = f[1];
-                    // let user_card = g[1];
-                    // let user_group = h[1];
-                    // let user_time_zone = i[1];
-                    // let user_verify = j[1];
-
-                    await client.query(query);
-                } catch (err) {
-                    console.log(err);
-                    throw err;
-                }
-            } finally {
-                client.release();
-            }
-        }
-
-  
-
-
-        // a.forEach(element => {
-        //     let second = element.toString();
-        //     b.push(second.split("="));
-        // });
-        //console.log(b);
-
+})
+            
     } else if (type === "ATTLOG") {
         //console.log(dat);
     }
